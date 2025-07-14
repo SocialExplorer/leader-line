@@ -689,6 +689,11 @@
   window.pathDataHasChanged = pathDataHasChanged; // [DEBUG/]
 
   function bBox2PathData(bBox) {
+    // Handle null or undefined bounding box
+    if (!bBox) {
+      console.warn('bBox2PathData: null bounding box provided, using default');
+      bBox = {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0};
+    }
     var right = bBox.right != null ? bBox.right : bBox.left + bBox.width,
       bottom = bBox.bottom != null ? bBox.bottom : bBox.top + bBox.height;
     return [
@@ -1496,6 +1501,11 @@
       updated = false;
 
     function getSocketXY(bBox, socketId) {
+      // Handle null bBox for disconnected elements in SPAs
+      if (!bBox) {
+        console.warn('Cannot get socket position: element bounding box is null (possibly disconnected)');
+        return {x: 0, y: 0, socketId: socketId};
+      }
       var socketXY = (
         socketId === SOCKET_TOP ? {x: bBox.left + bBox.width / 2, y: bBox.top} :
         socketId === SOCKET_RIGHT ? {x: bBox.right, y: bBox.top + bBox.height / 2} :
@@ -1531,6 +1541,13 @@
         anchorBBox = isAttach !== false && attachProps.conf.getBBoxNest ?
           attachProps.conf.getBBoxNest(attachProps, props, strokeWidth) :
           getBBoxNest(anchor, props.baseWindow);
+
+      // Handle null bounding box for disconnected elements
+      if (!anchorBBox) {
+        console.warn('LeaderLine: Cannot get bounding box for anchor element (possibly disconnected from DOM)');
+        // Create a fallback bounding box at origin
+        anchorBBox = {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0};
+      }
 
       curStats.capsMaskAnchor_pathDataSE[i] = isAttach !== false && attachProps.conf.getPathData ?
         attachProps.conf.getPathData(attachProps, props, strokeWidth) : bBox2PathData(anchorBBox);
