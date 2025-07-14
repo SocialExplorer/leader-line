@@ -5193,3 +5193,13 @@
 
   return LeaderLine;
 })();
+
+// UMD export pattern
+if (typeof module !== 'undefined' && module.exports) {
+  // CommonJS
+  module.exports = LeaderLine;
+  module.exports.default = LeaderLine;
+} else if (typeof define === 'function' && define.amd) {
+  // AMD
+  define(function() { return LeaderLine; });
+}
