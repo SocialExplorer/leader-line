@@ -14,7 +14,7 @@
     "bubble",
     "svg"
   ],
-  "main": "leader-line.min.js",
+  "main": "leader-line.js",
   "files": [
     "leader-line.min.js",
     "bower.json"
