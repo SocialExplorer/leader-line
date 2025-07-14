@@ -963,7 +963,8 @@
     });
 
     if (props.baseWindow && props.svg) {
-      props.baseWindow.document.body.removeChild(props.svg);
+      var parentElement = props.options.parent || props.baseWindow.document.body;
+      parentElement.removeChild(props.svg);
     }
     props.baseWindow = newWindow;
     setupWindow(newWindow);
@@ -1110,7 +1111,8 @@
       svg.style.visibility = 'hidden';
     }
 
-    baseDocument.body.appendChild(svg);
+    var parentElement = props.options.parent || baseDocument.body;
+    parentElement.appendChild(svg);
 
     // label (after appendChild(svg), bBox is used)
     [0, 1, 2].forEach(function(i) {
@@ -2591,6 +2593,19 @@
       throw new Error('`start` and `end` are required.');
     }
 
+    // parent
+    if (newOptions.parent !== undefined) {
+      var newParent = newOptions.parent;
+      if (newParent === null || isElement(newParent)) {
+        if (newParent !== options.parent) {
+          options.parent = newParent;
+          needsWindow = true; // Force rebind to update parent
+        }
+      } else {
+        throw new Error('`parent` must be an element or null.');
+      }
+    }
+
     // Check window.
     if (needsWindow &&
         (newWindow = getCommonWindow(
@@ -3353,7 +3368,7 @@
     var props = {
       // Initialize properties as array.
       options: {anchorSE: [], socketSE: [], socketGravitySE: [], plugSE: [], plugColorSE: [], plugSizeSE: [],
-        plugOutlineEnabledSE: [], plugOutlineColorSE: [], plugOutlineSizeSE: [], labelSEM: ['', '', '']},
+        plugOutlineEnabledSE: [], plugOutlineColorSE: [], plugOutlineSizeSE: [], labelSEM: ['', '', ''], parent: null},
       optionIsAttach: {anchorSE: [false, false], labelSEM: [false, false, false]},
       curStats: {}, aplStats: {}, attachments: [], events: {}, reflowTargets: []
     };
@@ -3407,7 +3422,8 @@
           ['outlineColor', 'lineOutlineColor'], ['outlineSize', 'lineOutlineSize'],
         ['startPlugOutline', 'plugOutlineEnabledSE', 0], ['endPlugOutline', 'plugOutlineEnabledSE', 1],
           ['startPlugOutlineColor', 'plugOutlineColorSE', 0], ['endPlugOutlineColor', 'plugOutlineColorSE', 1],
-          ['startPlugOutlineSize', 'plugOutlineSizeSE', 0], ['endPlugOutlineSize', 'plugOutlineSizeSE', 1]]
+          ['startPlugOutlineSize', 'plugOutlineSizeSE', 0], ['endPlugOutlineSize', 'plugOutlineSizeSE', 1],
+        ['parent', 'parent']]
       .forEach(function(conf) {
         var propName = conf[0], optionName = conf[1], i = conf[2];
         Object.defineProperty(LeaderLine.prototype, propName, {
@@ -3517,7 +3533,8 @@
     props.attachments.slice().forEach(function(attachProps) { unbindAttachment(props, attachProps); });
 
     if (props.baseWindow && props.svg) {
-      props.baseWindow.document.body.removeChild(props.svg);
+      var parentElement = props.options.parent || props.baseWindow.document.body;
+      parentElement.removeChild(props.svg);
     }
     delete insProps[this._id];
   };
