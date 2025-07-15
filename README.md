@@ -722,4 +722,684 @@ new LeaderLine(startElement, endElement, {startPlugColor: '#a6f41d', gradient: t
 
 The start color (see [Color Value](#color-value)) and end color of the gradient.
 
-If `'auto'` (default) is specified, each value of [`startPlugColor` and `endPlugColor`](#startplugcolor-endplugcolor) is set synchronously (i.e. it is changed when `startPlugColor`
+If `'auto'` (default) is specified, each value of [`startPlugColor` and `endPlugColor`](#startplugcolor-endplugcolor) is set synchronously (i.e. it is changed when `startPlugColor`/`endPlugColor` was changed).
+
+```js
+lineA.setOptions({ // element-1, element-2
+  gradient: {
+    startColor: '#2e17c3',
+    endColor: '#1df3f9'
+  }
+});
+
+lineB.setOptions({ // element-3, element-4
+  gradient: {
+    startColor: 'rgba(17, 148, 51, 0.1)',
+    endColor: 'rgb(17, 148, 51)'
+  }
+});
+```
+
+Since the gradient is made from only two colors, it might be not beautiful.
+
+### `dropShadow` (effect)
+
+*Type:* boolean or Object  
+*Default:* `false`
+
+Enable the effect with specified Object that can have properties as the following options.  
+Or `true` to enable it with all default options.
+
+```js
+new LeaderLine(startElement, endElement, {dropShadow: true});
+```
+
+#### `dx`, `dy`
+
+*Type:* number  
+*Default:* `dx`: `2` | `dy`: `4`
+
+The offset X and offset Y of the drop shadow, in pixels.
+
+```js
+line.setOptions({
+  color: '#f7f5ee',
+  dropShadow: {dx: 0, dy: 3}
+});
+```
+
+#### `blur`
+
+*Type:* number  
+*Default:* `3`
+
+The standard deviation for the blur operation in the drop shadow.
+
+```js
+line.setOptions({
+  dropShadow: {
+    dx: 6,
+    dy: 8,
+    blur: 0.2
+  }
+});
+```
+
+#### <a name="options-dropshadow-color"></a>`color`
+
+*Type:* string  
+*Default:* `'#000'`
+
+A color (see [Color Value](#color-value)) of the drop shadow.  
+An alpha channel can be contained but [`opacity`](#opacity) option should be used instead.
+
+```js
+new LeaderLine(startElement, endElement, {dropShadow: {color: 'blue', dx: 0, dy: 0}});
+```
+
+#### `opacity`
+
+*Type:* number  
+*Default:* `0.8`
+
+A number ranging from `0` to `1` to indicate the transparency of the drop shadow.
+
+## Attachments
+
+Attachments are passed to the leader line via some options, and those make that option have special behavior.
+
+You can get new attachment instance by individual static methods of `LeaderLine` (not instance methods).  
+For example, `LeaderLine.pointAnchor` method makes new [`pointAnchor`](#pointanchor) attachment instance. It is attached to the leader line via [`start` or `end`](#start-end) option of the leader line.  
+The following code passes a new `pointAnchor` attachment instance to `LeaderLine` constructor, via second argument as `end` option.
+
+```js
+new LeaderLine(startElement, LeaderLine.pointAnchor(endElement));
+```
+
+In the case of the plan to use the attachment afterward.
+
+```js
+var attachment = LeaderLine.pointAnchor(endElement);
+
+function attach() {
+  line.end = attachment;
+}
+```
+
+### `pointAnchor`
+
+```js
+attachment = LeaderLine.pointAnchor(options)
+```
+
+Or
+
+```js
+attachment = LeaderLine.pointAnchor(element[, options])
+```
+
+An attachment that is specified instead of an element for the [`start` or `end`](#start-end) option of the leader line, for indicating a point instead of the element.
+
+```js
+new LeaderLine(startElement, LeaderLine.pointAnchor(endElement));
+```
+
+The `options` argument is an Object that can have properties as options that are described later.
+
+The `element` argument is shortcut to `options.element`. The following two codes work same.
+
+```js
+attachment1 = LeaderLine.pointAnchor({element: element1});
+attachment2 = LeaderLine.pointAnchor({element: element2, x: 16, y: 32});
+```
+
+```js
+attachment1 = LeaderLine.pointAnchor(element1);
+attachment2 = LeaderLine.pointAnchor(element2, {x: 16, y: 32});
+```
+
+This attachment can be shared between multiple leader lines.
+
+```js
+// A new attachment instance is shared between `line1` and `line2`.
+line1.end = line2.end = LeaderLine.pointAnchor(endElement);
+```
+
+```js
+line1.end = LeaderLine.pointAnchor(endElement);
+
+function share() {
+  // The `line1`'s attachment instance is shared with `line2`.
+  line2.end = line1.end;
+}
+```
+
+After the attachment was attached by `start` or `end` option of the leader line, when something else is specified for that option, the leader line is detached from the attachment. When the last leader line is detached, the attachment is removed from the web page automatically, and it can't be used anymore.
+
+#### <a name="attachments-pointanchor-element"></a>`element`
+
+*Type:* HTML/SVG element
+
+An element that is a base of the point. See [`x` and `y`](#attachments-pointanchor-x-y) options.  
+You can specify a `<body>` element also. That is, you can make the leader line indicate anywhere in the document.
+
+#### <a name="attachments-pointanchor-x-y"></a>`x`, `y`
+
+*Type:* number or string  
+*Default:* `'50%'`
+
+The X and Y coordinates of the point, in pixels, relative to the top-left corner of the specified element for [`element`](#attachments-pointanchor-element) option.  
+Each value can be a percentage of the element's width or height. For example, `{x: '50%', y: '50%'}` (default) indicates the center of the element, `{x: '100%', y: 0}` indicates the top-right corner.  
+And also, each value can be a negative value or a value over the element's width or height, it indicates the outside of the element.
+
+```js
+new LeaderLine(element1, LeaderLine.pointAnchor(element3, {x: 10, y: 30}));
+new LeaderLine(element2, LeaderLine.pointAnchor(element3, {x: '100%', y: 0}));
+```
+
+### `areaAnchor`
+
+```js
+attachment = LeaderLine.areaAnchor(options)
+```
+
+Or
+
+```js
+attachment = LeaderLine.areaAnchor(element[, shape][, options])
+```
+
+An attachment that is specified instead of an element for the [`start` or `end`](#start-end) option of the leader line, for indicating an area instead of the element.
+
+```js
+new LeaderLine(startElement, LeaderLine.areaAnchor(endElement));
+```
+
+The `options` argument is an Object that can have properties as options that are described later.
+
+The `element` and `shape` arguments are shortcuts to `options.element` and `options.shape`. The following two codes work same.
+
+```js
+attachment1 = LeaderLine.areaAnchor({element: element1});
+attachment2 = LeaderLine.areaAnchor({element: element2, color: 'red'});
+attachment3 = LeaderLine.areaAnchor({element: element3, shape: 'circle'});
+attachment4 = LeaderLine.areaAnchor({element: element4, shape: 'circle', color: 'red'});
+```
+
+```js
+attachment1 = LeaderLine.areaAnchor(element1);
+attachment2 = LeaderLine.areaAnchor(element2, {color: 'red'});
+attachment3 = LeaderLine.areaAnchor(element3, 'circle');
+attachment4 = LeaderLine.areaAnchor(element4, 'circle', {color: 'red'});
+```
+
+This attachment can be shared between multiple leader lines. See [`pointAnchor`](#pointanchor) attachment for the sharing and the life cycle.
+
+#### <a name="attachments-areaanchor-element"></a>`element`
+
+*Type:* HTML/SVG element
+
+An element that is a base of the area. See [`x`, `y`](#attachments-areaanchor-x-y), [`width` and `height`](#width-height) options.  
+You can specify a `<body>` element also. That is, any area in the document can be indicated.
+
+#### `shape`
+
+*Type:* string  
+*Default:* `'rect'`
+
+One of the following keywords to indicate the shape of the area:
+
+- `rect`
+- `circle`
+- `polygon`
+
+[![ex-450](img/ex-450.png)](https://anseki.github.io/leader-line/)
+
+#### <a name="attachments-areaanchor-x-y"></a>`x`, `y`
+
+*Type:* number or string  
+*Default:* `'-5%'`
+
+An option for when `rect` or `circle` is specified for [`shape`](#shape) option.
+
+The X and Y coordinates for the top-left corner of the area, in pixels, relative to the top-left corner of the specified element for [`element`](#attachments-areaanchor-element) option.  
+Each value can be a percentage of the element's width or height. For example, `{x: '50%', y: '50%'}` indicates the center of the element, `{x: '100%', y: 0}` indicates the top-right corner.  
+And also, each value can be a negative value or a value over the element's width or height, it indicates the outside of the element.
+
+#### `width`, `height`
+
+*Type:* number or string  
+*Default:* `'110%'`
+
+An option for when `rect` or `circle` is specified for [`shape`](#shape) option.
+
+The width and height of the area, in pixels.  
+Each value can be a percentage of the element's width or height. For example, `{x: '50%', y: 0, width: '50%', height: '100%'}` indicates the right half of the element.  
+And also, each value can be a value over the element's width or height.
+
+#### `radius`
+
+*Type:* number  
+*Default:* `0`
+
+An option for when `rect` is specified for [`shape`](#shape) option.
+
+The radius to round corners of the area, in pixels.
+
+```js
+new LeaderLine(startElement,
+  LeaderLine.areaAnchor(endElement,
+    {x: '20%', y: '20%', width: '60%', height: '60%', radius: 10}));
+```
+
+#### `points`
+
+*Type:* Array  
+
+An option for when `polygon` is specified for [`shape`](#shape) option.
+
+An Array that contains three or more points of the polygon. Each item that is a point is an Array that contains the X and Y coordinates for the point. That is, it is Array that contains Array, like `[[x1, y1], [x2, y2], ...]`.  
+The X and Y coordinates are handled as same as [`x` and `y`](#attachments-areaanchor-x-y) options.
+
+```js
+new LeaderLine(startElement,
+  LeaderLine.areaAnchor(endElement,
+    {shape: 'polygon', points: [[10, 15], ['90%', '70%'], [10, '80%']]}));
+```
+
+#### <a name="attachments-areaanchor-color"></a>`color`
+
+*Type:* string  
+*Default:* [`color`](#options-color) of current first attached leader line (synchronously)
+
+A color (see [Color Value](#color-value)) of the border of the area.  
+By default, a value of [`color`](#options-color) option of the first leader line in current attached leader lines is set synchronously (i.e. it is changed when `color` of the leader line was changed).
+
+#### `fillColor`
+
+*Type:* string  
+*Default:* `''`
+
+A fill-color (see [Color Value](#color-value)) of the area.  
+If it is not specified (default), the area is not painted. It is better than specifying `'rgba(0, 0, 0, 0)'`.
+
+```js
+new LeaderLine(startElement,
+  LeaderLine.areaAnchor(endElement,
+    {x: 14, y: 20, width: 42, height: 60, radius: 10, fillColor: '#f8cd1e'}));
+```
+
+#### <a name="attachments-areaanchor-size"></a>`size`
+
+*Type:* number  
+*Default:* [`size`](#options-size) of current first attached leader line (synchronously)
+
+The width of the border of the area, in pixels.  
+If `0` is specified, the border is not drawn.
+
+```js
+new LeaderLine(startElement,
+  LeaderLine.areaAnchor(endElement,
+    {shape: 'polygon', points: [[10, 15], [63, 70], [10, 80]],
+      fillColor: '#f8cd1e', size: 0}));
+```
+
+#### <a name="attachments-areaanchor-dash"></a>`dash`
+
+*Type:* boolean or Object  
+*Default:* `false`
+
+Enable "dashed line" effect to the border of the area with specified Object that can have properties as the following options.  
+Or `true` to enable it with all default options.
+
+```js
+new LeaderLine(startElement,
+  LeaderLine.areaAnchor(endElement,
+    {x: 14, y: 20, width: 42, height: 60, radius: 8, dash: true}));
+```
+
+##### `len`, `gap`
+
+*Type:* number  
+*Default:* `len`: [`size`](#attachments-areaanchor-size) * 2 (synchronously) | `gap`: `size` (synchronously)
+
+The size of parts of the dashed line, in pixels.  
+`len` is length of drawn lines, `gap` is gap between drawn lines.
+
+### `mouseHoverAnchor`
+
+```js
+attachment = LeaderLine.mouseHoverAnchor(options)
+```
+
+Or
+
+```js
+attachment = LeaderLine.mouseHoverAnchor(element[, showEffectName][, options])
+```
+
+An attachment that is specified instead of an element for the [`start` or `end`](#start-end) option of the leader line, for showing and hiding the leader line by the mouse hovering.  
+This is a convenient way to call [`show`](#show-hide) method when a mouse enters the element, and call [`hide`](#show-hide) method when a mouse leaves the element. Also, a small icon and some style are added to the element.  
+And also, it includes a polyfill for `mouseenter` and `mouseleave` events that are not supported by some web browsers.
+
+```js
+new LeaderLine(LeaderLine.mouseHoverAnchor(startElement), endElement);
+```
+
+This is an attachment to provide a convenient way to do the behavior above. If you want more style or more custom behavior, you will use [`show`/`hide`](#show-hide) methods and your CSS code instead of this attachment.
+
+The `options` argument is an Object that can have properties as options that are described later.
+
+The `element` and `showEffectName` arguments are shortcuts to `options.element` and `options.showEffectName`. The following two codes work same.
+
+```js
+attachment1 = LeaderLine.mouseHoverAnchor({element: element1});
+attachment2 = LeaderLine.mouseHoverAnchor({element: element2, style: {color: 'red'}});
+attachment3 = LeaderLine.mouseHoverAnchor({element: element3, showEffectName: 'draw'});
+attachment4 = LeaderLine.mouseHoverAnchor(
+  {element: element4, showEffectName: 'draw', style: {color: 'red'}});
+```
+
+```js
+attachment1 = LeaderLine.mouseHoverAnchor(element1);
+attachment2 = LeaderLine.mouseHoverAnchor(element2, {style: {color: 'red'}});
+attachment3 = LeaderLine.mouseHoverAnchor(element3, 'draw');
+attachment4 = LeaderLine.mouseHoverAnchor(element4, 'draw', {style: {color: 'red'}});
+```
+
+This attachment can be shared between multiple leader lines. See [`pointAnchor`](#pointanchor) attachment for the sharing and the life cycle.
+
+#### <a name="attachments-mousehoveranchor-element"></a>`element`
+
+*Type:* HTML element
+
+An element that is a trigger for showing and hiding the leader line.
+
+#### `showEffectName`
+
+*Type:* string  
+*Default:* Value that was specified last time, or `fade` at first time
+
+A value that is passed to [`show`/`hide`](#show-hide) methods as its `showEffectName` argument.
+
+```js
+new LeaderLine(LeaderLine.mouseHoverAnchor(startElement, 'draw'), endElement);
+```
+
+#### `animOptions`
+
+*Type:* Object  
+*Default:* See [`showEffectName`](#methods-show-hide-showeffectname) of [`show`/`hide`](#show-hide) methods
+
+A value that is passed to [`show`/`hide`](#show-hide) methods as its `animOptions` argument.
+
+#### `style`
+
+*Type:* Object  
+*Default:* `undefined`
+
+An Object that has additional style properties for the element.  
+You can specify `null` as a property to disable adding the style property. Note that it doesn't disable the style property. For example, if `{backgroundColor: null}` is specified, the attachment doesn't change current `backgroundColor` style property of the element.
+
+#### `hoverStyle`
+
+*Type:* Object  
+*Default:* `undefined`
+
+This works same to [`style`](#style) option except that these style properties are added when a mouse enters the element.
+
+#### `onSwitch`
+
+*Type:* function  
+*Default:* `undefined`
+
+A function that is called after [`show`/`hide`](#show-hide) method, with an `event` argument.
+
+### `captionLabel`
+
+```js
+attachment = LeaderLine.captionLabel(options)
+```
+
+Or
+
+```js
+attachment = LeaderLine.captionLabel(text[, options])
+```
+
+An attachment that is specified instead of a string for the [`startLabel`, `middleLabel` or `endLabel`](#startlabel-middlelabel-endlabel) option of the leader line, for showing a custom label on the leader line.
+
+```js
+new LeaderLine(startElement, endElement, {
+  startLabel: LeaderLine.captionLabel('START'),
+  middleLabel: LeaderLine.captionLabel('MIDDLE'),
+  endLabel: LeaderLine.captionLabel('END')
+});
+```
+
+The `options` argument is an Object that can have properties as options that are described later.
+
+The `text` argument is shortcut to `options.text`. The following two codes work same.
+
+```js
+attachment1 = LeaderLine.captionLabel({text: 'LABEL-1'});
+attachment2 = LeaderLine.captionLabel({text: 'LABEL-2', color: 'red'});
+```
+
+```js
+attachment1 = LeaderLine.captionLabel('LABEL-1');
+attachment2 = LeaderLine.captionLabel('LABEL-2', {color: 'red'});
+```
+
+This attachment can *not* be shared between multiple leader lines.  
+When the attachment that was already attached is attached to another leader line, then, the former leader line is detached automatically. That is, the attachment moves from the leader line to another leader line.
+
+```js
+// A new attachment instance is attached to `line1`.
+line1.endLabel = LeaderLine.captionLabel('LABEL-1');
+
+// The attachment is attached to `line2`, then, `line1` is detached.
+line2.endLabel = line1.endLabel;
+```
+
+Also, it can move between labels of the same leader line.
+
+```js
+// The attachment is moved from `endLabel` to `startLabel`.
+line1.startLabel = line1.endLabel;
+```
+
+When the leader line is detached from the attachment and any leader line is not attached, the attachment is removed from the web page automatically, and it can't be used anymore.
+
+#### `text`
+
+*Type:* string  
+
+A string that is shown as a label.
+
+#### `offset`
+
+*Type:* Array  
+*Default:* Calculated suitable position
+
+By default, a `captionLabel` attachment that is attached as `startLabel` is positioned near the socket (i.e. connecting point) that is decided by [`startSocket`](#startsocket-endsocket) option of the leader line. In like manner, attached one as `endLabel` is positioned near the socket that is decided by `endSocket` option. Those are calculated with the size of the leader line, the font size of the label, etc.
+
+If an Array that is `[x, y]` in pixels is specified for `offset` option, the attachment is positioned at the specified coordinates relative to the decided socket.
+
+```js
+new LeaderLine(startElement, endElement, {
+  startLabel: LeaderLine.captionLabel('START', {color: 'blue', offset: [-20, 0]})
+});
+```
+
+#### <a name="attachments-captionlabel-lineoffset"></a>`lineOffset`
+
+*Type:* number  
+*Default:* `0`
+
+By default, a `captionLabel` attachment that is attached as `middleLabel` is positioned at the middle point of the path of the leader line.  
+If a length in pixels is specified for `lineOffset` option, the attachment is positioned at the offset point from the middle point of the path. The length is distance along the path, a negative value makes it become close to the element as [`start`](#start-end) option.
+
+#### `color`
+
+*Type:* string  
+*Default:* [`color`](#options-color) of current attached leader line (synchronously)
+
+A color (see [Color Value](#color-value)) of the text.  
+By default, a value of [`color`](#options-color) option of the current attached leader line is set synchronously (i.e. it is changed when `color` of the leader line was changed).
+
+#### <a name="attachments-captionlabel-outlinecolor"></a>`outlineColor`
+
+*Type:* string  
+*Default:* `'#fff'`
+
+A color (see [Color Value](#color-value)) of an outline of the text.  
+The outline makes the text avoid seeming to blend with a background.  
+If `''` is specified, the outline is not drawn. It is better than specifying `'rgba(0, 0, 0, 0)'`.
+
+#### <a name="attachments-captionlabel-other-style-properties"></a>Other Style Properties
+
+You can specify the following CSS properties also:
+
+- `fontFamily`
+- `fontStyle`
+- `fontVariant`
+- `fontWeight`
+- `fontStretch`
+- `fontSize`
+- `fontSizeAdjust`
+- `kerning`
+- `letterSpacing`
+- `wordSpacing`
+- `textDecoration`
+
+Note that some properties might not be supported by some web browsers, LeaderLine doesn't care for those.
+
+### `pathLabel`
+
+```js
+attachment = LeaderLine.pathLabel(options)
+```
+
+Or
+
+```js
+attachment = LeaderLine.pathLabel(text[, options])
+```
+
+An attachment that is specified instead of a string for the [`startLabel`, `middleLabel` or `endLabel`](#startlabel-middlelabel-endlabel) option of the leader line, for showing a label along the path of the leader line.
+
+```js
+new LeaderLine(startElement, endElement, {
+  startLabel: LeaderLine.pathLabel('START'),
+  middleLabel: LeaderLine.pathLabel('MIDDLE'),
+  endLabel: LeaderLine.pathLabel('END')
+});
+```
+
+The `options` argument is an Object that can have properties as options that are described later.
+
+The `text` argument is shortcut to `options.text`. The following two codes work same.
+
+```js
+attachment1 = LeaderLine.pathLabel({text: 'LABEL-1'});
+attachment2 = LeaderLine.pathLabel({text: 'LABEL-2', color: 'red'});
+```
+
+```js
+attachment1 = LeaderLine.pathLabel('LABEL-1');
+attachment2 = LeaderLine.pathLabel('LABEL-2', {color: 'red'});
+```
+
+This attachment can *not* be shared between multiple leader lines. See [`captionLabel`](#captionlabel) attachment for the sharing and the life cycle.
+
+Note that the characters are put along the path of the leader line from the [`start`](#start-end) element toward the [`end`](#start-end) element even if the path curves sharply or it is drawn toward the left. If you have to avoid those cases for important text, use [`captionLabel`](#captionlabel) instead.
+
+#### `text`
+
+*Type:* string  
+
+A string that is shown as a label.
+
+#### <a name="attachments-pathlabel-lineoffset"></a>`lineOffset`
+
+*Type:* number  
+*Default:* `0`
+
+By default, a `pathLabel` attachment that is attached as `startLabel` is positioned near the element as [`start`](#start-end) option. In like manner, attached one as `endLabel` is positioned near the element as `end` option. And attached one as `middleLabel` is positioned at the middle point of the path of the leader line.  
+If a length in pixels is specified for `lineOffset` option, the attachment is positioned at the offset point from the position above. The length is distance along the path, a negative value makes it become close to the element as `start` option.
+
+#### `color`
+
+*Type:* string  
+*Default:* [`color`](#options-color) of current attached leader line (synchronously)
+
+A color (see [Color Value](#color-value)) of the text.  
+By default, a value of [`color`](#options-color) option of the current attached leader line is set synchronously (i.e. it is changed when `color` of the leader line was changed).
+
+#### <a name="attachments-pathlabel-outlinecolor"></a>`outlineColor`
+
+*Type:* string  
+*Default:* `'#fff'`
+
+A color (see [Color Value](#color-value)) of an outline of the text.  
+The outline makes the text avoid seeming to blend with a background.  
+If `''` is specified, the outline is not drawn. It is better than specifying `'rgba(0, 0, 0, 0)'`.
+
+#### Other Style Properties
+
+See the [option of `captionLabel`](#attachments-captionlabel-other-style-properties).
+
+## Animation Options
+
+### `duration`
+
+*Type:* number
+
+A number determining how long (milliseconds) the animation will run.
+
+```js
+new LeaderLine(
+  LeaderLine.mouseHoverAnchor(startElement, 'draw', {
+    animOptions: {
+      duration: 3000
+    }
+  }),
+  endElement
+);
+```
+
+### `timing`
+
+*Type:* Array or string
+
+An Array that is `[x1, y1, x2, y2]` as a "timing function" that indicates how to change the speed. It works same as that of [CSS animation](https://developer.mozilla.org/en/docs/Web/CSS/timing-function).
+
+```js
+new LeaderLine(
+  LeaderLine.mouseHoverAnchor(startElement, 'draw', {
+    animOptions: {
+      duration: 3000,
+      timing: [0.5, 0, 1, 0.42]
+    }
+  }),
+  endElement
+);
+```
+
+You can specify one of the following keywords also. These values mean [keywords for common timing functions](https://developer.mozilla.org/en/docs/Web/CSS/timing-function#Keywords_for_common_timing-functions).
+
+- `ease`
+- `linear`
+- `ease-in`
+- `ease-out`
+- `ease-in-out`
+
+## Color Value
+
+CSS color notations are accepted. A value might contain an alpha channel that specifies the transparency.  
+For example, `hsl(200, 70%, 58%)`, `rgba(73, 172, 223, 0.5)`, `#49acdf`, `skyblue`, etc. Some web browsers support `hwb()`, `device-cmyk()` and `gray()` also.
+
+---
+
+Thanks for images: [Brain & Storm](http://brainandstorm.com/), [Michael Gaida](https://pixabay.com/users/MichaelGaida-652234/), [CGvector](http://www.cgvector.com/)
