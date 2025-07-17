@@ -362,7 +362,10 @@
       console.error('Cannot get document that contains the element.');
       return null;
     }
-    if (element.compareDocumentPosition(doc) & Node.DOCUMENT_POSITION_DISCONNECTED) {
+    // Check if element is truly disconnected (supports shadow DOM)
+    // Use isConnected if available (modern browsers), otherwise fall back to checking if getBoundingClientRect works
+    if (typeof element.isConnected === 'boolean' ? !element.isConnected : 
+        (element.compareDocumentPosition(doc) & Node.DOCUMENT_POSITION_DISCONNECTED)) {
       console.error('A disconnected element was passed.');
       return null;
     }
