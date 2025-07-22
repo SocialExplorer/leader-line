@@ -200,5 +200,38 @@ module.exports = grunt => {
     'taskHelper:packJs'
   ]);
 
+  // Add debug build task
+  grunt.config.set('taskHelper.packJsDebug', {
+    options: {
+      handlerByContent: content => {
+        const reEXPORT = /^[\s\S]*?@EXPORT@\s*(?:\*\/\s*)?([\s\S]*?)\s*(?:\/\*\s*|\/\/\s*)?@\/EXPORT@[\s\S]*$/;
+        PACK_LIBS.forEach(keyPath => {
+          code[keyPath[0]] = fs.readFileSync(pathUtil.join(SRC_DIR_PATH, keyPath[1]), {encoding: 'utf8'})
+            .replace(keyPath[2] || reEXPORT, '$1');
+        });
+
+        const banner = `/*! ${PKG.title || PKG.name} v${PKG.version} DEBUG VERSION - UNMINIFIED (c) ${PKG.author.name} ${PKG.homepage} */\n`;
+        // Return unminified version - no uglify, but still process includes and remove DEBUG tags
+        return banner + preProc.removeTag('DEBUG',
+          content.replace(/@INCLUDE\[code:([^\n]+?)\]@/g,
+            (s, codeKey) => {
+              if (typeof code[codeKey] !== 'string') {
+                grunt.fail.fatal(`File doesn't exist code: ${codeKey}`);
+              }
+              return code[codeKey];
+            }
+          )
+        );
+      }
+    },
+    src: `${SRC_DIR_PATH}/leader-line.js`,
+    dest: pathUtil.join(ROOT_PATH, 'leader-line-debug.js')
+  });
+
+  grunt.registerTask('debug', [
+    'defs',
+    'taskHelper:packJsDebug'
+  ]);
+
   grunt.registerTask('default', ['build']);
 };
