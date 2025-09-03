@@ -7,6 +7,19 @@
 - 📦 CommonJS module support
 - 🔧 AMD imports compatibility
 
+
+```sh
+# required dependencies: entr, grunt
+
+# in this repository
+$ yarn link
+# watch and build
+$ ls ./src/* | entr grunt
+
+# in viz-omni
+$ yarn link leader-line
+```
+
 ---
 
 # LeaderLine
