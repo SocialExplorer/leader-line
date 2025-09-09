@@ -107,6 +107,8 @@
     SHAPE_GAP = IS_TRIDENT || IS_EDGE ? 0.2 : 0.1,
 
     DEFAULT_OPTIONS = {
+      parentElement: null,
+      stackingContextElement: null,
       path: PATH_FLUID,
       lineColor: 'coral',
       lineSize: 4,
@@ -905,11 +907,11 @@
     return bodyOffset;
   }
 
-  function setupWindow(window) {
-    var baseDocument = window.document, defsSvg;
+function setupWindow(window, parentElement) {
+    var baseDocument = window.document, defsSvg, parent = parentElement || baseDocument.body;
     if (!baseDocument.getElementById(DEFS_ID)) { // Add svg defs
       defsSvg = (new window.DOMParser()).parseFromString(DEFS_HTML, 'image/svg+xml');
-      baseDocument.body.appendChild(defsSvg.documentElement);
+      parent.appendChild(defsSvg.documentElement);
       pathDataPolyfill(window, IS_GECKO);
     }
   }
@@ -922,7 +924,7 @@
    */
   function bindWindow(props, newWindow) {
     traceLog.add('<bindWindow>'); // [DEBUG/]
-    var aplStats = props.aplStats, baseDocument = newWindow.document,
+    var options = props.options, aplStats = props.aplStats, baseDocument = newWindow.document,
       svg, defs, maskCaps, element, prefix = APP_ID + '-' + props._id,
       linePathId, lineShapeId, capsId, maskBGRectId, lineOutlineMaskId, plugOutlineMaskIdSE;
 
@@ -965,13 +967,12 @@
       }
     });
 
-    if (props.baseWindow && props.svg) {
-      var parentElement = props.options.parent || props.baseWindow.document.body;
-      parentElement.removeChild(props.svg);
+    if (props.baseWindow && props.svg && props.svg.parentNode) {
+      props.svg.parentNode.removeChild(props.svg);
     }
     props.baseWindow = newWindow;
-    setupWindow(newWindow);
-    props.bodyOffset = getBodyOffset(newWindow); // Get `bodyOffset`
+    var parentElement = options.parentElement || newWindow.document.body;
+    setupWindow(newWindow, parentElement);
 
     // Main SVG
     props.svg = svg = baseDocument.createElementNS(SVG_NS, 'svg');
@@ -1114,7 +1115,6 @@
       svg.style.visibility = 'hidden';
     }
 
-    var parentElement = props.options.parent || baseDocument.body;
     parentElement.appendChild(svg);
 
     // label (after appendChild(svg), bBox is used)
@@ -1525,6 +1525,14 @@
     curStats.position_lineStrokeWidth = curStats.line_strokeWidth;
     curStats.position_socketGravitySE = curSocketGravitySE = copyTree(options.socketGravitySE);
 
+    var stackingContext = options.stackingContextElement || props.baseWindow.document.body,
+      isDefaultContext = stackingContext === props.baseWindow.document.body,
+      contextBBox;
+
+    if (!isDefaultContext) {
+      contextBBox = getBBoxNest(stackingContext, props.baseWindow);
+    }
+
     anchorBBoxSE = [0, 1].map(function(i) {
       var anchor = options.anchorSE[i], isAttach = props.optionIsAttach.anchorSE[i],
         attachProps = isAttach !== false ? insAttachProps[anchor._id] : null,
@@ -1534,6 +1542,17 @@
         anchorBBox = isAttach !== false && attachProps.conf.getBBoxNest ?
           attachProps.conf.getBBoxNest(attachProps, props, strokeWidth) :
           getBBoxNest(anchor, props.baseWindow);
+
+      if (!isDefaultContext) {
+        var contextStyles = props.baseWindow.getComputedStyle(stackingContext, '');
+        var borderLeft = parseFloat(contextStyles.borderLeftWidth);
+        var borderTop = parseFloat(contextStyles.borderTopWidth);
+
+        anchorBBox.left = (anchorBBox.left - contextBBox.left - borderLeft) + stackingContext.scrollLeft;
+        anchorBBox.top = (anchorBBox.top - contextBBox.top - borderTop) + stackingContext.scrollTop;
+        anchorBBox.right = (anchorBBox.right - contextBBox.left - borderLeft) + stackingContext.scrollLeft;
+        anchorBBox.bottom = (anchorBBox.bottom - contextBBox.top - borderTop) + stackingContext.scrollTop;
+      }
 
       curStats.capsMaskAnchor_pathDataSE[i] = isAttach !== false && attachProps.conf.getPathData ?
         attachProps.conf.getPathData(attachProps, props, strokeWidth) : bBox2PathData(anchorBBox);
@@ -2057,7 +2076,9 @@
    */
   function updateViewBox(props) {
     traceLog.add('<updateViewBox>'); // [DEBUG/]
-    var curStats = props.curStats, aplStats = props.aplStats,
+    var options = props.options, curStats = props.curStats, aplStats = props.aplStats,
+      stackingContext = options.stackingContextElement, parentElement = options.parentElement,
+      isCustomContext = !!(stackingContext && parentElement && stackingContext !== document.body),
       curEdge = curStats.path_edge, padding, edge,
       curBBox = curStats.viewBox_bBox, aplBBox = aplStats.viewBox_bBox,
       viewBox = props.svg.viewBox.baseVal, styles = props.svg.style,
@@ -2077,16 +2098,50 @@
     curBBox.width = edge.x2 - edge.x1;
     curBBox.height = edge.y2 - edge.y1;
 
-    ['x', 'y', 'width', 'height'].forEach(function(boxKey) {
-      var value;
-      if ((value = curBBox[boxKey]) !== aplBBox[boxKey]) {
-        traceLog.add(boxKey); // [DEBUG/]
-        viewBox[boxKey] = aplBBox[boxKey] = value;
-        styles[BBOX_PROP[boxKey]] = value +
-          (boxKey === 'x' || boxKey === 'y' ? props.bodyOffset[boxKey] : 0) + 'px';
+    if (isCustomContext) {
+      // For custom context, use the "big SVG" approach.
+      // The SVG overlays the entire stacking context, and the path is drawn with context-relative coordinates.
+      var parentBBox = getBBoxNest(parentElement, props.baseWindow);
+      var contextBBox = getBBoxNest(stackingContext, props.baseWindow);
+
+      var newStyles = {
+        left: (contextBBox.left - parentBBox.left) + 'px',
+        top: (contextBBox.top - parentBBox.top) + 'px',
+        width: stackingContext.scrollWidth + 'px',
+        height: stackingContext.scrollHeight + 'px'
+      };
+
+      Object.keys(newStyles).forEach(function(key) {
+        if (styles[key] !== newStyles[key]) {
+          styles[key] = newStyles[key];
+          updated = true;
+        }
+      });
+
+      // The viewBox now covers the entire scrollable area of the context.
+      if (viewBox.x !== 0 || viewBox.y !== 0 ||
+          viewBox.width !== stackingContext.scrollWidth || viewBox.height !== stackingContext.scrollHeight) {
+        viewBox.x = 0;
+        viewBox.y = 0;
+        viewBox.width = stackingContext.scrollWidth;
+        viewBox.height = stackingContext.scrollHeight;
         updated = true;
       }
-    });
+
+    } else {
+      // Original logic for default body context.
+      ['x', 'y', 'width', 'height'].forEach(function(boxKey) {
+        var value;
+        if ((value = curBBox[boxKey]) !== aplBBox[boxKey]) {
+          traceLog.add(boxKey); // [DEBUG/]
+          viewBox[boxKey] = aplBBox[boxKey] = value;
+          if (!props.bodyOffset) { props.bodyOffset = getBodyOffset(props.baseWindow); } // Lazy load
+          styles[BBOX_PROP[boxKey]] = value +
+            (boxKey === 'x' || boxKey === 'y' ? props.bodyOffset[boxKey] : 0) + 'px';
+          updated = true;
+        }
+      });
+    }
 
     if (!updated) { traceLog.add('not-updated'); } // [DEBUG/]
     traceLog.add('</updateViewBox>'); // [DEBUG/]
@@ -2573,6 +2628,16 @@
 
     newOptions = newOptions || {};
 
+    if (newOptions.parentElement && isElement(newOptions.parentElement) && newOptions.parentElement !== options.parentElement) {
+      options.parentElement = newOptions.parentElement;
+      needsWindow = true; // Re-check window and re-bind if necessary
+    }
+    var newStackingContext = newOptions.stackingContextElement || options.parentElement;
+    if (newStackingContext && isElement(newStackingContext) && newStackingContext !== options.stackingContextElement) {
+      options.stackingContextElement = newStackingContext;
+      needs.position = true;
+    }
+
     // anchorSE
     ['start', 'end'].forEach(function(optionName, i) {
       var newOption = newOptions[optionName], newIsAttachment = false;
@@ -2596,19 +2661,6 @@
       throw new Error('`start` and `end` are required.');
     }
 
-    // parent
-    if (newOptions.parent !== undefined) {
-      var newParent = newOptions.parent;
-      if (newParent === null || isElement(newParent)) {
-        if (newParent !== options.parent) {
-          options.parent = newParent;
-          needsWindow = true; // Force rebind to update parent
-        }
-      } else {
-        throw new Error('`parent` must be an element or null.');
-      }
-    }
-
     // Check window.
     if (needsWindow &&
         (newWindow = getCommonWindow(
@@ -2618,7 +2670,7 @@
             insAttachProps[options.anchorSE[1]._id].element : options.anchorSE[1]
         )) !== props.baseWindow) {
       bindWindow(props, newWindow);
-      needs.line = needs.plug = needs.lineOutline = needs.plugOutline = needs.faces = needs.effect = true;
+      needs.line = needs.plug = needs.lineOutline = needs.plugOutline = needs.faces = needs.position = needs.effect = true;
     }
 
     needs.position = setValidId(options, newOptions, 'path',
@@ -3370,8 +3422,9 @@
   function LeaderLine(start, end, options) {
     var props = {
       // Initialize properties as array.
-      options: {anchorSE: [], socketSE: [], socketGravitySE: [], plugSE: [], plugColorSE: [], plugSizeSE: [],
-        plugOutlineEnabledSE: [], plugOutlineColorSE: [], plugOutlineSizeSE: [], labelSEM: ['', '', ''], parent: null},
+      options: {parentElement: null, stackingContextElement: null,
+        anchorSE: [], socketSE: [], socketGravitySE: [], plugSE: [], plugColorSE: [], plugSizeSE: [],
+        plugOutlineEnabledSE: [], plugOutlineColorSE: [], plugOutlineSizeSE: [], labelSEM: ['', '', '']},
       optionIsAttach: {anchorSE: [false, false], labelSEM: [false, false, false]},
       curStats: {}, aplStats: {}, attachments: [], events: {}, reflowTargets: []
     };
@@ -3425,8 +3478,7 @@
           ['outlineColor', 'lineOutlineColor'], ['outlineSize', 'lineOutlineSize'],
         ['startPlugOutline', 'plugOutlineEnabledSE', 0], ['endPlugOutline', 'plugOutlineEnabledSE', 1],
           ['startPlugOutlineColor', 'plugOutlineColorSE', 0], ['endPlugOutlineColor', 'plugOutlineColorSE', 1],
-          ['startPlugOutlineSize', 'plugOutlineSizeSE', 0], ['endPlugOutlineSize', 'plugOutlineSizeSE', 1],
-        ['parent', 'parent']]
+          ['startPlugOutlineSize', 'plugOutlineSizeSE', 0], ['endPlugOutlineSize', 'plugOutlineSizeSE', 1]]
       .forEach(function(conf) {
         var propName = conf[0], optionName = conf[1], i = conf[2];
         Object.defineProperty(LeaderLine.prototype, propName, {
@@ -3535,9 +3587,8 @@
     if (curStats.show_animId) { anim.remove(curStats.show_animId); }
     props.attachments.slice().forEach(function(attachProps) { unbindAttachment(props, attachProps); });
 
-    if (props.baseWindow && props.svg) {
-      var parentElement = props.options.parent || props.baseWindow.document.body;
-      parentElement.removeChild(props.svg);
+    if (props.baseWindow && props.svg && props.svg.parentElement) {
+      props.svg.parentElement.removeChild(props.svg);
     }
     delete insProps[this._id];
   };
@@ -3793,6 +3844,7 @@
         attachProps.path.style.fill = attachProps.fill || 'none';
         attachProps.isShown = false;
         svg.style.visibility = 'hidden';
+        // TODO: use options parentEl?
         baseDocument.body.appendChild(svg);
         setupWindow((window = baseDocument.defaultView));
         attachProps.bodyOffset = getBodyOffset(window); // Get `bodyOffset`

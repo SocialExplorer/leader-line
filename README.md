@@ -14,10 +14,13 @@
 # in this repository
 $ yarn link
 # watch and build
-$ ls ./src/* | entr grunt
+$ yarn watch
 
 # in viz-omni
 $ yarn link leader-line
+
+# to test the parentElement option in an isolated env, run:
+$ yarn test-parent-element
 ```
 
 ---
