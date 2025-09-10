@@ -7,6 +7,22 @@
 - 📦 CommonJS module support
 - 🔧 AMD imports compatibility
 
+
+```sh
+# required dependencies: entr, grunt
+
+# in this repository
+$ yarn link
+# watch and build
+$ yarn watch
+
+# in viz-omni
+$ yarn link leader-line
+
+# to test the parentElement option in an isolated env, run:
+$ yarn test-parent-element
+```
+
 ---
 
 # LeaderLine
