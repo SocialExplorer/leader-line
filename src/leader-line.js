@@ -3446,6 +3446,11 @@ function setupWindow(window, parentElement) {
     props._id = this._id;
     insProps[this._id] = props;
 
+    Object.defineProperty(this, 'svg', {
+      get: function() { return insProps[this._id].svg; },
+      enumerable: true
+    });
+
     if (arguments.length === 1) {
       options = start;
       start = null;
